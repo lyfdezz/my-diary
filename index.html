@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chic Diary - Monthly View</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --card-bg: #2d2d2d;
+            --text-color: #e0e0e0;
+            --accent-color: #d4af37;
+            --input-bg: #3d3d3d;
+            --border-color: #444;
+            --sun-color: #ff6b6b;
+            --sat-color: #4facfe;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0; padding: 10px;
+            display: flex; justify-content: center;
+        }
+
+        .container { width: 100%; max-width: 600px; }
+        h2 { text-align: center; color: var(--accent-color); margin: 8px 0; font-size: 1.1rem; letter-spacing: 2px; }
+
+        .section {
+            background: var(--card-bg);
+            padding: 12px; border-radius: 10px;
+            margin-bottom: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .calendar-title-group { display: flex; flex-direction: column; align-items: center; flex-grow: 1; }
+        .calendar-title { font-weight: bold; font-size: 0.95rem; }
+        
+        .today-btn { 
+            font-size: 0.65rem; background: transparent; color: var(--accent-color); 
+            border: 1px solid var(--accent-color); padding: 2px 8px; margin-top: 4px; border-radius: 12px; cursor: pointer;
+        }
+
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+        .calendar-day-head { font-size: 0.65rem; font-weight: bold; padding-bottom: 2px; }
+        .calendar-day-head:nth-child(1) { color: var(--sun-color); }
+        .calendar-day-head:nth-child(7) { color: var(--sat-color); }
+
+        .calendar-day {
+            padding: 8px 0; border-radius: 4px; cursor: pointer;
+            background: var(--input-bg); font-size: 0.85rem; position: relative;
+            min-height: 28px; display: flex; align-items: center; justify-content: center;
+        }
+        .calendar-day.sun { color: var(--sun-color); }
+        .calendar-day.sat { color: var(--sat-color); }
+        .calendar-day.other-month { opacity: 0.15; }
+        .calendar-day.today { border: 1px solid var(--accent-color); background: rgba(212, 175, 55, 0.1); }
+        .calendar-day.selected { background: var(--accent-color) !important; color: #1a1a1a !important; font-weight: bold; }
+
+        .recording-target { font-size: 0.75rem; color: var(--accent-color); margin-bottom: 4px; font-weight: bold; }
+        textarea { width: 100%; height: 60px; background: var(--input-bg); border: 1px solid var(--border-color); border-radius: 6px; color: white; padding: 8px; box-sizing: border-box; margin-bottom: 8px; font-size: 0.9rem; resize: none; }
+        .controls { display: flex; gap: 8px; flex-wrap: wrap; }
+        select, button, input[type="text"] { border-radius: 6px; font-size: 0.8rem; cursor: pointer; font-weight: bold; border: 1px solid var(--border-color); }
+        select, input[type="text"] { background: var(--input-bg); color: white; padding: 4px 8px; }
+        button { padding: 6px 12px; background-color: var(--accent-color); color: #1a1a1a; border: none; }
+
+        .category-editor { display: none; margin-top: 10px; border-top: 1px solid #444; padding-top: 10px; }
+        .cat-edit-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .color-picker { width: 24px; height: 24px; border: none; padding: 0; background: none; cursor: pointer; border-radius: 4px; }
+
+        .memo-item {
+            background: var(--card-bg); padding: 10px 10px 30px 10px; border-radius: 8px;
+            margin-bottom: 10px; border-left: 4px solid var(--accent-color);
+            position: relative;
+        }
+        .memo-header { display: flex; justify-content: space-between; font-size: 0.7rem; margin-bottom: 6px; color: #888; }
+        .category-select-mini { background: #444; color: white; border: none; font-size: 0.65rem; border-radius: 3px; padding: 1px 3px; }
+        .editable-content { color: var(--text-color); font-size: 0.85rem; white-space: pre-wrap; word-break: break-all; outline: none; line-height: 1.4; }
+        .delete-btn { position: absolute; right: 10px; bottom: 8px; color: #ff6b6b; cursor: pointer; font-size: 0.65rem; opacity: 0.6; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>CHIC DIARY</h2>
+
+    <div class="section">
+        <div class="calendar-header">
+            <button onclick="changeMonth(-1)">＜</button>
+            <div class="calendar-title-group">
+                <span id="calendarTitle" class="calendar-title"></span>
+                <button class="today-btn" onclick="goToday()">今日に戻る</button>
+            </div>
+            <button onclick="changeMonth(1)">＞</button>
+        </div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+    </div>
+
+    <div class="section">
+        <div id="targetDisplay" class="recording-target"></div>
+        <textarea id="memoInput" placeholder="何を記録しますか？"></textarea>
+        <div class="controls">
+            <select id="categorySelect"></select>
+            <button onclick="saveMemo()">保存</button>
+            <button onclick="showMonthlyView()" style="background:#444; color:white;">今月の履歴</button>
+            <button onclick="toggleCatEditor()" style="background:#555; color:white; font-size:0.7rem;">⚙ カテゴリ</button>
+        </div>
+
+        <div id="categoryEditor" class="category-editor">
+            <div id="categoryList"></div>
+            <div class="cat-edit-row" style="margin-top:10px;">
+                <input type="text" id="newCatName" placeholder="新規カテゴリ" style="flex-grow:1;">
+                <input type="color" id="newCatColor" value="#d4af37" class="color-picker">
+                <button onclick="addCategory()" style="background:#48bb78; color:white;">追加</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="memoList"></div>
+</div>
+
+<script>
+    let currentViewDate = new Date();
+    let selectedDateStr = "";
+    let isMonthlyMode = false; // 月間表示モードかどうか
+    
+    function getFormattedDate(dateObj) {
+        const y = dateObj.getFullYear();
+        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const d = String(dateObj.getDate()).padStart(2, '0');
+        return `${y}/${m}/${d}`;
+    }
+
+    const realTodayStr = getFormattedDate(new Date());
+
+    window.onload = () => {
+        const defaultCats = [
+            { name: "仕事", color: "#4facfe" },
+            { name: "アイデア", color: "#ffd700" },
+            { name: "プライベート", color: "#48bb78" }
+        ];
+        if (!localStorage.getItem('diaryCategories')) {
+            localStorage.setItem('diaryCategories', JSON.stringify(defaultCats));
+        }
+        goToday();
+        initCategories();
+    };
+
+    function goToday() {
+        const now = new Date();
+        currentViewDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        selectedDateStr = realTodayStr;
+        isMonthlyMode = false;
+        updateTargetText();
+        renderCalendar();
+        updateDisplay();
+    }
+
+    function updateTargetText() {
+        const display = document.getElementById('targetDisplay');
+        if (isMonthlyMode) {
+            const year = currentViewDate.getFullYear();
+            const month = currentViewDate.getMonth() + 1;
+            display.innerText = `📅 今月の履歴: ${year}年${month}月`;
+        } else {
+            display.innerText = selectedDateStr ? `📅 記録中: ${selectedDateStr}` : "📅 全履歴表示中";
+        }
+    }
+
+    function initCategories() {
+        const cats = JSON.parse(localStorage.getItem('diaryCategories'));
+        const select = document.getElementById('categorySelect');
+        const editorList = document.getElementById('categoryList');
+        select.innerHTML = ""; editorList.innerHTML = "";
+        cats.forEach((cat, index) => {
+            const opt = document.createElement('option');
+            opt.value = cat.name; opt.innerText = cat.name;
+            select.appendChild(opt);
+            const row = document.createElement('div');
+            row.className = 'cat-edit-row';
+            row.innerHTML = `
+                <input type="text" value="${cat.name}" onchange="updateCatName(${index}, this.value)" style="flex-grow:1; font-size:0.75rem;">
+                <input type="color" value="${cat.color}" onchange="updateCatColor(${index}, this.value)" class="color-picker">
+                <span onclick="deleteCategory(${index})" style="color:#ff6b6b; cursor:pointer; padding:0 5px;">×</span>`;
+            editorList.appendChild(row);
+        });
+    }
+
+    function renderCalendar() {
+        const grid = document.getElementById('calendarGrid');
+        grid.innerHTML = "";
+        const year = currentViewDate.getFullYear();
+        const month = currentViewDate.getMonth();
+        document.getElementById('calendarTitle').innerText = `${year}年 ${month + 1}月`;
+
+        ['日','月','火','水','木','金','土'].forEach(d => {
+            const div = document.createElement('div');
+            div.className = 'calendar-day-head'; div.innerText = d; grid.appendChild(div);
+        });
+
+        const firstDay = new Date(year, month, 1).getDay();
+        const lastDate = new Date(year, month + 1, 0).getDate();
+        const prevLastDate = new Date(year, month, 0).getDate();
+
+        for (let i = firstDay; i > 0; i--) drawDay(grid, new Date(year, month - 1, prevLastDate - i + 1), true);
+        for (let i = 1; i <= lastDate; i++) drawDay(grid, new Date(year, month, i), false);
+        const padding = (grid.children.length - 7 <= 35 ? 35 : 42) - (grid.children.length - 7);
+        for (let i = 1; i <= padding; i++) drawDay(grid, new Date(year, month + 1, i), true);
+    }
+
+    function drawDay(grid, dateObj, isOther) {
+        const dateStr = getFormattedDate(dateObj);
+        const dayEl = document.createElement('div');
+        dayEl.className = 'calendar-day';
+        if (isOther) dayEl.classList.add('other-month');
+        if (dateObj.getDay() === 0) dayEl.classList.add('sun');
+        if (dateObj.getDay() === 6) dayEl.classList.add('sat');
+        if (dateStr === realTodayStr) dayEl.classList.add('today');
+        if (!isMonthlyMode && dateStr === selectedDateStr) dayEl.classList.add('selected');
+
+        dayEl.innerText = dateObj.getDate();
+        dayEl.onclick = () => {
+            isMonthlyMode = false;
+            selectedDateStr = (selectedDateStr === dateStr) ? "" : dateStr;
+            updateTargetText();
+            renderCalendar(); updateDisplay();
+        };
+        grid.appendChild(dayEl);
+    }
+
+    function showMonthlyView() {
+        isMonthlyMode = true;
+        selectedDateStr = ""; // 個別選択は解除
+        updateTargetText();
+        renderCalendar();
+        updateDisplay();
+    }
+
+    function updateDisplay() {
+        const list = document.getElementById('memoList');
+        const memos = JSON.parse(localStorage.getItem('ultraDiary')) || [];
+        const cats = JSON.parse(localStorage.getItem('diaryCategories'));
+        list.innerHTML = "";
+
+        let filtered = [];
+        if (isMonthlyMode) {
+            // 現在のカレンダー表示月で絞り込み
+            const year = currentViewDate.getFullYear();
+            const month = String(currentViewDate.getMonth() + 1).padStart(2, '0');
+            const monthPrefix = `${year}/${month}`;
+            filtered = memos.filter(m => m.date.startsWith(monthPrefix));
+        } else {
+            // 選択された日付で絞り込み（空なら全表示）
+            filtered = memos.filter(m => !selectedDateStr || m.date.startsWith(selectedDateStr));
+        }
+        
+        if (filtered.length === 0) {
+            list.innerHTML = `<div style="text-align:center; color:#666; font-size:0.8rem; margin-top:20px;">記録はありません</div>`;
+            return;
+        }
+
+        filtered.reverse().forEach(m => {
+            const catColor = cats.find(c => c.name === m.category)?.color || 'var(--accent-color)';
+            const div = document.createElement('div');
+            div.className = 'memo-item';
+            div.style.borderLeftColor = catColor;
+            
+            div.innerHTML = `
+                <div class="memo-header"><span>${m.date}</span>
+                <select class="category-select-mini" onchange="updateMemo(${m.id}, 'category', this.value)">
+                    ${cats.map(c => `<option value="${c.name}" ${m.category===c.name?'selected':''}>${c.name}</option>`).join('')}
+                </select></div>
+                <div class="editable-content" contenteditable="true" onblur="updateMemo(${m.id}, 'content', this.innerText)">${m.content}</div>
+                <span class="delete-btn" onclick="deleteMemo(${m.id})">削除</span>`;
+            list.appendChild(div);
+        });
+    }
+
+    function saveMemo() {
+        const text = document.getElementById('memoInput').value;
+        const cat = document.getElementById('categorySelect').value;
+        if (!text.trim()) return;
+        const datePart = selectedDateStr || realTodayStr;
+        const now = new Date();
+        const time = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+        const entry = { id: Date.now(), content: text, category: cat, date: `${datePart} ${time}` };
+        const memos = JSON.parse(localStorage.getItem('ultraDiary')) || [];
+        memos.push(entry);
+        localStorage.setItem('ultraDiary', JSON.stringify(memos));
+        document.getElementById('memoInput').value = "";
+        updateDisplay();
+    }
+
+    // --- その他管理用 ---
+    function toggleCatEditor() { const e = document.getElementById('categoryEditor'); e.style.display = e.style.display==='block'?'none':'block'; }
+    function addCategory() {
+        const name = document.getElementById('newCatName').value;
+        const color = document.getElementById('newCatColor').value;
+        if (!name) return;
+        const cats = JSON.parse(localStorage.getItem('diaryCategories'));
+        cats.push({ name, color });
+        localStorage.setItem('diaryCategories', JSON.stringify(cats));
+        document.getElementById('newCatName').value = ""; initCategories(); updateDisplay();
+    }
+    function updateCatName(index, newName) {
+        const cats = JSON.parse(localStorage.getItem('diaryCategories'));
+        const oldName = cats[index].name; cats[index].name = newName;
+        localStorage.setItem('diaryCategories', JSON.stringify(cats));
+        let ms = JSON.parse(localStorage.getItem('ultraDiary')) || [];
+        ms = ms.map(m => m.category === oldName ? {...m, category: newName} : m);
+        localStorage.setItem('ultraDiary', JSON.stringify(ms));
+        initCategories(); updateDisplay();
+    }
+    function updateCatColor(index, newColor) {
+        const cats = JSON.parse(localStorage.getItem('diaryCategories'));
+        cats[index].color = newColor;
+        localStorage.setItem('diaryCategories', JSON.stringify(cats));
+        initCategories(); updateDisplay();
+    }
+    function deleteCategory(index) {
+        if (!confirm("削除しますか？")) return;
+        const cats = JSON.parse(localStorage.getItem('diaryCategories'));
+        cats.splice(index, 1);
+        localStorage.setItem('diaryCategories', JSON.stringify(cats));
+        initCategories(); updateDisplay();
+    }
+    function updateMemo(id, field, value) {
+        let ms = JSON.parse(localStorage.getItem('ultraDiary')) || [];
+        ms = ms.map(m => m.id === id ? { ...m, [field]: value } : m);
+        localStorage.setItem('ultraDiary', JSON.stringify(ms));
+        if (field === 'category') updateDisplay();
+    }
+    function changeMonth(diff) { 
+        currentViewDate.setMonth(currentViewDate.getMonth() + diff); 
+        if (isMonthlyMode) updateTargetText(); // モード中ならタイトルを更新
+        renderCalendar(); 
+        updateDisplay();
+    }
+    function deleteMemo(id) { if(confirm("削除しますか？")) { let ms = JSON.parse(localStorage.getItem('ultraDiary')).filter(m => m.id !== id); localStorage.setItem('ultraDiary', JSON.stringify(ms)); updateDisplay(); } }
+</script>
+
+</body>
+</html>
