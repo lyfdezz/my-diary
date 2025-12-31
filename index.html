@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chic Diary - Monthly View</title>
+    <title>Chic Diary - Chronological Monthly</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -123,7 +123,7 @@
 <script>
     let currentViewDate = new Date();
     let selectedDateStr = "";
-    let isMonthlyMode = false; // 月間表示モードかどうか
+    let isMonthlyMode = false;
     
     function getFormattedDate(dateObj) {
         const y = dateObj.getFullYear();
@@ -162,9 +162,9 @@
         if (isMonthlyMode) {
             const year = currentViewDate.getFullYear();
             const month = currentViewDate.getMonth() + 1;
-            display.innerText = `📅 今月の履歴: ${year}年${month}月`;
+            display.innerText = `📅 今月の履歴: ${year}年${month}月 (日付順)`;
         } else {
-            display.innerText = selectedDateStr ? `📅 記録中: ${selectedDateStr}` : "📅 全履歴表示中";
+            display.innerText = selectedDateStr ? `📅 記録中: ${selectedDateStr}` : "📅 全表示";
         }
     }
 
@@ -231,7 +231,7 @@
 
     function showMonthlyView() {
         isMonthlyMode = true;
-        selectedDateStr = ""; // 個別選択は解除
+        selectedDateStr = "";
         updateTargetText();
         renderCalendar();
         updateDisplay();
@@ -245,14 +245,16 @@
 
         let filtered = [];
         if (isMonthlyMode) {
-            // 現在のカレンダー表示月で絞り込み
             const year = currentViewDate.getFullYear();
             const month = String(currentViewDate.getMonth() + 1).padStart(2, '0');
             const monthPrefix = `${year}/${month}`;
             filtered = memos.filter(m => m.date.startsWith(monthPrefix));
+            // ★日付の昇順（1日→31日）にソート
+            filtered.sort((a, b) => a.date.localeCompare(b.date));
         } else {
-            // 選択された日付で絞り込み（空なら全表示）
             filtered = memos.filter(m => !selectedDateStr || m.date.startsWith(selectedDateStr));
+            // 単日表示のときは新しい順（降順）
+            filtered.reverse();
         }
         
         if (filtered.length === 0) {
@@ -260,7 +262,7 @@
             return;
         }
 
-        filtered.reverse().forEach(m => {
+        filtered.forEach(m => {
             const catColor = cats.find(c => c.name === m.category)?.color || 'var(--accent-color)';
             const div = document.createElement('div');
             div.className = 'memo-item';
@@ -292,7 +294,6 @@
         updateDisplay();
     }
 
-    // --- その他管理用 ---
     function toggleCatEditor() { const e = document.getElementById('categoryEditor'); e.style.display = e.style.display==='block'?'none':'block'; }
     function addCategory() {
         const name = document.getElementById('newCatName').value;
@@ -333,7 +334,7 @@
     }
     function changeMonth(diff) { 
         currentViewDate.setMonth(currentViewDate.getMonth() + diff); 
-        if (isMonthlyMode) updateTargetText(); // モード中ならタイトルを更新
+        if (isMonthlyMode) updateTargetText();
         renderCalendar(); 
         updateDisplay();
     }
