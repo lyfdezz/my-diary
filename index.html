@@ -2,8 +2,8 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chic Diary - Chronological Monthly</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chic Diary - No Zoom</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -14,6 +14,12 @@
             --border-color: #444;
             --sun-color: #ff6b6b;
             --sat-color: #4facfe;
+        }
+
+        /* 全ての要素でダブルタップズームを抑制し、タップの反応を速くする */
+        * {
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent; /* タップ時の青い枠を消す */
         }
 
         body {
@@ -249,11 +255,9 @@
             const month = String(currentViewDate.getMonth() + 1).padStart(2, '0');
             const monthPrefix = `${year}/${month}`;
             filtered = memos.filter(m => m.date.startsWith(monthPrefix));
-            // ★日付の昇順（1日→31日）にソート
             filtered.sort((a, b) => a.date.localeCompare(b.date));
         } else {
             filtered = memos.filter(m => !selectedDateStr || m.date.startsWith(selectedDateStr));
-            // 単日表示のときは新しい順（降順）
             filtered.reverse();
         }
         
