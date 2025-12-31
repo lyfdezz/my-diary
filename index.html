@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Chic Diary - No Zoom</title>
+    <title>Chic Diary - Backup Edition</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -16,10 +16,9 @@
             --sat-color: #4facfe;
         }
 
-        /* 全ての要素でダブルタップズームを抑制し、タップの反応を速くする */
         * {
             touch-action: manipulation;
-            -webkit-tap-highlight-color: transparent; /* タップ時の青い枠を消す */
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
@@ -71,7 +70,7 @@
         select, input[type="text"] { background: var(--input-bg); color: white; padding: 4px 8px; }
         button { padding: 6px 12px; background-color: var(--accent-color); color: #1a1a1a; border: none; }
 
-        .category-editor { display: none; margin-top: 10px; border-top: 1px solid #444; padding-top: 10px; }
+        .panel { display: none; margin-top: 10px; border-top: 1px solid #444; padding-top: 10px; }
         .cat-edit-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
         .color-picker { width: 24px; height: 24px; border: none; padding: 0; background: none; cursor: pointer; border-radius: 4px; }
 
@@ -110,15 +109,25 @@
             <select id="categorySelect"></select>
             <button onclick="saveMemo()">保存</button>
             <button onclick="showMonthlyView()" style="background:#444; color:white;">今月の履歴</button>
-            <button onclick="toggleCatEditor()" style="background:#555; color:white; font-size:0.7rem;">⚙ カテゴリ</button>
+            <button onclick="togglePanel('categoryEditor')" style="background:#555; color:white; font-size:0.7rem;">⚙ カテゴリ</button>
+            <button onclick="togglePanel('backupPanel')" style="background:#333; color:white; font-size:0.7rem;">💾 バックアップ</button>
         </div>
 
-        <div id="categoryEditor" class="category-editor">
+        <div id="categoryEditor" class="panel">
             <div id="categoryList"></div>
             <div class="cat-edit-row" style="margin-top:10px;">
                 <input type="text" id="newCatName" placeholder="新規カテゴリ" style="flex-grow:1;">
                 <input type="color" id="newCatColor" value="#d4af37" class="color-picker">
                 <button onclick="addCategory()" style="background:#48bb78; color:white;">追加</button>
+            </div>
+        </div>
+
+        <div id="backupPanel" class="panel">
+            <div style="font-size:0.75rem; margin-bottom:10px; color:#aaa;">CSV形式でデータの書き出しと読み込みができます。</div>
+            <div style="display:flex; gap:10px;">
+                <button onclick="exportCSV()" style="background:#2c5282; color:white; flex:1;">CSVエクスポート</button>
+                <button onclick="document.getElementById('csvFileInput').click()" style="background:#2d3748; color:white; flex:1;">CSVインポート</button>
+                <input type="file" id="csvFileInput" accept=".csv" style="display:none" onchange="importCSV(event)">
             </div>
         </div>
     </div>
@@ -298,7 +307,70 @@
         updateDisplay();
     }
 
-    function toggleCatEditor() { const e = document.getElementById('categoryEditor'); e.style.display = e.style.display==='block'?'none':'block'; }
+    // --- CSVエクスポート ---
+    function exportCSV() {
+        const memos = JSON.parse(localStorage.getItem('ultraDiary')) || [];
+        if (memos.length === 0) { alert("データがありません"); return; }
+
+        let csv = "id,date,category,content\n";
+        memos.forEach(m => {
+            const escapedContent = `"${m.content.replace(/"/g, '""')}"`;
+            csv += `${m.id},${m.date},${m.category},${escapedContent}\n`;
+        });
+
+        const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `diary_backup_${new Date().toISOString().slice(0,10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // --- CSVインポート ---
+    function importCSV(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const text = e.target.result;
+            const lines = text.split("\n");
+            const memos = JSON.parse(localStorage.getItem('ultraDiary')) || [];
+            let importCount = 0;
+
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                // CSVパース（簡易）
+                const parts = lines[i].match(/(".*?"|[^,]+)/g);
+                if (parts && parts.length >= 4) {
+                    const id = parseInt(parts[0]);
+                    const date = parts[1];
+                    const category = parts[2];
+                    const content = parts[3].replace(/^"|"$/g, '').replace(/""/g, '"');
+
+                    if (!memos.some(m => m.id === id)) {
+                        memos.push({ id, date, category, content });
+                        importCount++;
+                    }
+                }
+            }
+            localStorage.setItem('ultraDiary', JSON.stringify(memos));
+            alert(`${importCount}件のデータをインポートしました`);
+            updateDisplay();
+        };
+        reader.readAsText(file);
+        event.target.value = ""; // リセット
+    }
+
+    function togglePanel(id) { 
+        const p = document.getElementById(id);
+        const isOpen = p.style.display === 'block';
+        document.querySelectorAll('.panel').forEach(el => el.style.display = 'none');
+        p.style.display = isOpen ? 'none' : 'block';
+    }
+
     function addCategory() {
         const name = document.getElementById('newCatName').value;
         const color = document.getElementById('newCatColor').value;
